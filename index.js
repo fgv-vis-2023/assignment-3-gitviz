@@ -12,7 +12,7 @@ const tooltip = d3
   .attr("class", "tooltip")
   .style("opacity", 0);
 
-d3.csv("/data_sample.csv").then((data) => {
+d3.csv("./data_sample.csv").then((data) => {
   // Data
 
   data = data.filter((d) => d.stars > 0 && d.forks > 0);
