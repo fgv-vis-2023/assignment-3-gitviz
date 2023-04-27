@@ -11,10 +11,9 @@ const tooltip = d3
   .append("div")
   .attr("class", "tooltip")
   .style("opacity", 0);
-
-d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data_sample.csv").then((data) => {
-  // Data
-
+  
+  d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data_sample.csv").then((data) => {
+  
   data = data.filter((d) => d.stars > 0 && d.forks > 0);
 
   const languagesCount = data.reduce((acc, curr) => {
@@ -36,6 +35,10 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data_sample.csv").the
   data.forEach((d) => {
     d.language_ = d.language || "Unknown";
     d.language = topLanguages.includes(d.language) ? d.language : "Other";
+    d.stars = +d.stars;
+    d.forks = +d.forks;
+    d.created_at = new Date(d.created_at);
+    // d.pushed_at = new Date(d.pushed_at);
   });
 
   // Base
@@ -49,19 +52,25 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data_sample.csv").the
     .attr("width", width)
     .attr("height", height);
 
-  const xMin = d3.min(data, (d) => +d.stars);
-  const xMax = d3.max(data, (d) => +d.stars);
+  const chart = svg.append("g").attr("id", "chart");
+  const hist = svg.append("g").attr("id", "hist");
+
+  const [xMin, xMax] = d3.extent(data, (d) => d.stars);
   const xScale = d3
     .scaleLog()
-    .domain([xMin, xMax])
-    .range([120, width - 320]);
+    .domain([xMin, xMax])  // 0 is not allowed in log scale
+    .range([110, width - 320]);
+  
+  const xScaleHist = d3
+    .scaleTime()
+    .domain(d3.extent(data, (d) => d.created_at))
+    .range([110, width - 320]);
 
-  const yMin = d3.min(data, (d) => +d.forks);
-  const yMax = d3.max(data, (d) => +d.forks);
+  const [yMin, yMax] = d3.extent(data, (d) => d.forks);
   const yScale = d3
     .scaleLog()
     .domain([yMin, yMax])
-    .range([height - 100, 140]);
+    .range([height - 210, 100]);
 
   const colorScale = d3
     .scaleOrdinal()
@@ -71,26 +80,40 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data_sample.csv").the
   // Axes
 
   const xAxis = d3.axisBottom().scale(xScale);
+  const xAxisHist = d3.axisBottom().scale(xScaleHist);
   const yAxis = d3.axisLeft().scale(yScale);
 
   svg
     .append("g")
     .attr("id", "x-axis")
-    .attr("transform", `translate(0, ${height - 80})`)
+    .attr("transform", `translate(0, ${height - 190})`)
     .call(xAxis);
 
   svg
     .append("g")
+    .attr("id", "x-axis-hist")
+    .attr("transform", `translate(0, ${height - 50})`)
+    .call(xAxisHist);
+
+  svg
+    .append("g")
     .attr("id", "y-axis")
-    .attr("transform", `translate(100, 0)`)
+    .attr("transform", `translate(80, 0)`)
     .call(yAxis);
 
   svg
     .append("text")
     .attr("id", "x-axis-label")
     .attr("x", (width - 280) / 2)
-    .attr("y", height - 20)
-    .text("Stars");
+    .attr("y", height - 150)
+    .text("Stars (log)");
+
+  svg
+    .append("text")
+    .attr("id", "x-axis-hist-label")
+    .attr("x", (width - 280) / 2)
+    .attr("y", height - 5)
+    .text("Creation Date");
 
   svg
     .append("text")
@@ -98,20 +121,80 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data_sample.csv").the
     .attr("x", -height / 2)
     .attr("y", 20)
     .attr("transform", "rotate(-90)")
-    .text("Forks");
+    .text("Forks (log)");
 
-  svg.append("text")
+  svg
+    .append("text")
     .attr("id", "title")
     .attr("x", width / 2)
-    .attr("y", 40)
+    .attr("y", 30)
     .attr("text-anchor", "middle")
     .style("font-size", "24px")
     .style("font-weight", "bold")
     .text("GitViz: A Visualization of GitHub Repositories");
 
+  // svg
+  //   .append("rect")
+  //   .attr("x", 110)
+  //   .attr("y", height - 130)
+  //   .attr("width", width - 429)
+  //   .attr("height", 80)
+  //   .attr("fill", "none")
+  //   .attr("stroke", "black");
+
+
+  // Histogram
+    
+    let makeBins = d3
+    .bin()
+    .value((d) => d.created_at)
+    .domain(xScaleHist.domain())
+    .thresholds(xScaleHist.ticks(30));
+    
+    let bins = makeBins(data);
+  
+    const yScaleHist = d3
+      .scaleLinear()
+      .range([height - 50, height - 130])
+      .domain([0, d3.max(bins, (d) => d.length)]);
+
+  hist.selectAll("rect")
+    .data(bins)
+    .enter()
+    .append("rect")
+    .attr("x", (d) => 1 + xScaleHist(d.x0))
+    .attr("y", (d) => yScaleHist(d.length))
+    .attr("width", (d) => xScaleHist(d.x1) - xScaleHist(d.x0) - 1)
+    .attr("height", (d) => height - yScaleHist(d.length) - 50)
+    .attr("fill", "steelblue")
+    .attr("opacity", 0.8)
+    .on("mouseover", function (event, d) {
+      let item = d3.select(this);
+      item.attr("stroke", "black");
+      
+      tooltip
+        .style("left",
+          `${xScaleHist(d.x1) + 10}px`)
+        .style("top",
+          `${item.attr("y")}px`)
+        .style("opacity", 0.9);
+
+      tooltip
+        .append("p")
+        .text(`Quantidade: ${d.length}`)
+    })
+    .on("mouseout", function () {
+      item = d3.select(this);
+      item.attr("stroke", "none");
+
+      tooltip.style("opacity", 0);
+      tooltip.selectAll("p").remove();
+    });
+
+
   // Circles
 
-  svg
+  chart
     .selectAll("circle")
     .data(data)
     .enter()
@@ -133,11 +216,15 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data_sample.csv").the
       if (item.classed("hoverable")) {
         item
           .attr("stroke", "black")
-          .attr("stroke-width", 1 + d3.select(this).attr("r") * 0.05);
-
+          .attr("stroke-width", 1 + item.attr("r") * 0.05);
+        
+        // Posoiciona o tooltip próximo do canto inferior direito do círculo
+        let offset = 0.9 * Math.sqrt(Number(item.attr("r"))**2 / 2) + 10;
         tooltip
-          .style("left", event.pageX + "px")
-          .style("top", event.pageY + "px")
+          .style("left",
+            `${Number(item.attr("cx")) + offset}px`)
+          .style("top",
+            `${Number(item.attr("cy")) + offset}px`)
           .style("opacity", 0.9);
 
         tooltip
@@ -159,11 +246,17 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data_sample.csv").the
 
       tooltip.style("opacity", 0);
       tooltip.selectAll("p").remove();
+    })
+    .on("click", function (event, d) {
+      item = d3.select(this);
+      if (item.classed("hoverable")) {
+        window.open("https://github.com/" + d.repo, "_blank");
+      }
     });
 
   // Legend
 
-  const legend = svg
+  const legend = chart
     .append("g")
     .attr("id", "legend")
     .attr("transform", `translate(${width - 200}, 140)`);
@@ -184,19 +277,18 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data_sample.csv").the
     .on("click", (d) => {
       const btn = d3.select(d.target);
       const data = d.target.__data__;
-      const language = toClassName(data);
 
       if (!btn.classed("active")) {
-      btn.classed("active", true);
-      
-      d3.selectAll(`.dot`)
-        .attr("fill", (d) => colorScale(d.language))
-        .attr("opacity", 1)
-        .classed("hoverable", true)
-        .filter((d) => !(d.language == data))
-        .attr("fill", "grey")
-        .attr("opacity", 0.25)
-        .classed("hoverable", false);
+        btn.classed("active", true);
+        
+        d3.selectAll(`.dot`)
+          .attr("fill", (d) => colorScale(d.language))
+          .attr("opacity", 1)
+          .classed("hoverable", true)
+          .filter((d) => !(d.language == data))
+          .attr("fill", "grey")
+          .attr("opacity", 0.25)
+          .classed("hoverable", false);
       } else {
         btn.classed("active", false);
         d3.selectAll(`.dot`)
@@ -211,14 +303,14 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data_sample.csv").the
       });
     })
     .on("mouseover", function (d) {
-      d3.select(this)
+      let item = d3.select(this);
+      item
         .attr("stroke", "black")
-        .attr("stroke-width", 1 + d3.select(this).attr("r") * 0.05);
+        .attr("stroke-width", 1);
 
       const data = d.target.__data__;
       const language = toClassName(data);
-      const circles = d3
-        .selectAll(`.hoverable.${language}`)
+      d3.selectAll(`.hoverable.${language}`)
         .attr("stroke", "black")
         .attr("stroke-width", (d) => 1 + (Math.sqrt(d.stars / xMax) + Math.sqrt(d.forks / yMax)) * 25 * 0.05);
     })
@@ -227,8 +319,7 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data_sample.csv").the
       const data = d.target.__data__;
 
       const language = toClassName(data);
-      const circles = d3
-        .selectAll(`.hoverable.${language}`)
+      d3.selectAll(`.hoverable.${language}`)
         .attr("stroke", "none");
     });
 
