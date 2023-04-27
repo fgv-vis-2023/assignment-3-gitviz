@@ -12,7 +12,7 @@ const tooltip = d3
   .attr("class", "tooltip")
   .style("opacity", 0);
   
-  d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data_sample.csv").then((data) => {
+  d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data.csv").then((data) => {
   
   data = data.filter((d) => d.stars > 0 && d.forks > 0);
 
@@ -75,7 +75,7 @@ const tooltip = d3
   const colorScale = d3
     .scaleOrdinal()
     .domain(topLanguages)
-    .range(d3.schemeTableau10);
+    .range(d3.schemePaired);
 
   // Axes
 
@@ -205,7 +205,7 @@ const tooltip = d3
     .attr("cy", (d) => yScale(d.forks))
     .attr(
       "r",
-      (d) => (Math.sqrt(d.stars / xMax) + Math.sqrt(d.forks / yMax)) * 25
+      (d) => (Math.min(30, Math.max(3, Math.sqrt(d.stars / xMax) + Math.sqrt(d.forks / yMax) * 30)))
     )
     .attr("fill", (d) => colorScale(d.language))
     .attr("class", (d) => toClassName(d.language))
