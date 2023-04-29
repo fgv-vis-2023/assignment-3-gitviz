@@ -222,14 +222,16 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data.csv").then(
         .attr("r", 0)
         .merge(circles)
         .attr("data-selected", (d) => language && d.language === language)
-        .attr("cursor", (d) => !language || d.language === language ? "pointer" : "default")
+        .attr("cursor", (d) =>
+          !language || d.language === language ? "pointer" : "default"
+        )
         .on("mouseover", function (_, d) {
           if (!language || d?.language === language) {
             const item = d3.select(this);
 
             item
               .attr("stroke", "black")
-              .attr("stroke-width", 1 + item.attr("r") * 0.05)
+              .attr("stroke-width", 1 + item.attr("r") * 0.05);
 
             const formattedDate = d3.timeFormat("%B %d, %Y")(d.created_at);
 
@@ -355,5 +357,28 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data.csv").then(
       .text("Languages")
       .style("font-size", "1.5rem")
       .style("font-weight", "bold");
+
+    // Source
+
+    chart
+      .append("text")
+      .attr("x", width - 330)
+      .attr("y", 25)
+      .attr("text-anchor", "middle")
+      .text("Source:");
+
+    chart
+      .append("text")
+      .attr("x", width - 150)
+      .attr("y", 25)
+      .attr("text-anchor", "middle")
+      .append("a")
+      .attr("fill", "blue")
+      .attr(
+        "xlink:href",
+        "https://www.kaggle.com/datasets/joonasyoon/github-topics"
+      )
+      .attr("target", "_blank")
+      .text("Github Topics and Repositories 2022");
   }
 );
