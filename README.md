@@ -7,7 +7,7 @@ Given the nature of the dataset, one of the most intuitive ways of visualizing t
 
 In our case, we wanted to visualize how the amount of stars and forks of a repository correlate with one another mainly. And, therefore, we have used these variables as the x and y axis of our bubble plot. We have also wanted to explore more variables, and we made the bubble size represent a relation between the numbers of stars and forks, given by:
 
-$$\text{radius} = \min \left( 30,\ \max \left( 3,\ \left( \sqrt{\dfrac{s}{s_{\text{max}}}} + \sqrt{\dfrac{f}{f_{\text{max}}}} \right)30 \right) \right), $$
+$$\text{radius} =  \max \left( 3,\ 15 \left( \sqrt{\dfrac{s}{s_{\text{max}}}} + \sqrt{\dfrac{f}{f_{\text{max}}}} \right) \right), $$
 
 where $s$ is the number of stars and $f$ is the number of forks.
 

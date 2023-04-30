@@ -44,10 +44,7 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data.csv").then(
       d.language = topLanguages.includes(d.language) ? d.language : "Other";
       d.stars = +d.stars;
       d.forks = +d.forks;
-      d.radius = Math.min(
-        30,
-        Math.max(3, Math.sqrt(d.stars / xMax) + Math.sqrt(d.forks / yMax) * 30)
-      );
+      d.radius = Math.max(3, (Math.sqrt(d.stars / xMax) + Math.sqrt(d.forks / yMax)) * 15);
       d.created_at = new Date(d.created_at);
     });
 
@@ -120,6 +117,14 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data.csv").then(
 
     svg
       .append("text")
+      .attr("id", "y-axis-hist-label")
+      .attr("x", -(height - 60))
+      .attr("y", 20)
+      .attr("transform", "rotate(-90)")
+      .text("Count");
+
+    svg
+      .append("text")
       .attr("id", "title")
       .attr("x", 20)
       .attr("y", 35)
@@ -127,33 +132,46 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data.csv").then(
       .style("font-weight", "bold")
       .text("GitViz: A Visualization of GitHub Repositories");
 
+      svg
+        .append("rect")
+        .attr("x", 110)
+        .attr("y", height - 132)
+        .attr("width", width - 429)
+        .attr("height", 82)
+        .attr("fill", "none")
+        .attr("stroke", "black");
+
     // Histogram
 
     const hist = svg.append("g").attr("id", "hist");
-
-    const histXAxis = d3.axisBottom();
-    const histXAxisEl = svg
-      .append("g")
-      .attr("id", "x-axis-hist")
-      .attr("transform", `translate(0, ${height - 50})`);
 
     const xScaleHist = d3
       .scaleTime()
       .domain(d3.extent(data, (d) => d.created_at))
       .range([110, width - 320]);
 
-    histXAxis.scale(xScaleHist);
+    const histXAxis = d3.axisBottom().scale(xScaleHist);
 
     const histBrush = d3
       .brushX()
       .extent([
-        [110, height - 130],
+        [110, height - 132],
         [width - 320, height - 50],
       ])
       .on("end", (e) => {
         filters.interval = e.selection?.map(xScaleHist.invert);
         drawCircles();
       });
+
+    svg
+      .append("g")
+      .attr("id", "x-axis-hist")
+      .attr("transform", `translate(0, ${height - 50})`)
+      .call(histXAxis);
+
+    var histYAxisElem = svg.append("g")
+      .attr("id", "y-axis-hist")
+      .attr("transform", `translate(80, 0)`);
 
     svg.append("g").attr("id", "brush").call(histBrush);
 
@@ -165,7 +183,7 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data.csv").then(
         : data.slice();
 
       const bins = d3
-        .histogram()
+        .bin()
         .value((d) => d.created_at)
         .domain(xScaleHist.domain())
         .thresholds(xScaleHist.ticks(30))(filteredData);
@@ -175,7 +193,7 @@ d3.csv("https://fgv-vis-2023.github.io/assignment-3-gitviz/data.csv").then(
         .range([height - 50, height - 130])
         .domain([0, d3.max(bins, (d) => d.length)]);
 
-      histXAxisEl.call(histXAxis);
+      histYAxisElem.call(d3.axisLeft().scale(yScaleHist).ticks(4));
 
       const bars = hist.selectAll("rect").data(bins);
 
